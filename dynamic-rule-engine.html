@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dynamic Rule Engine Demo</title>
+    <script src="https://unpkg.com/json-rules-engine/dist/json-rules-engine.umd.js"></script>
+</head>
+<body>
+
+<h2>PERSON DEMOGRAPHIC DATES</h2>
+<input type="hidden" id="PAGE_ID" value="DCIDA">
+
+<input id="montheffectiveBeginDate" placeholder="MM">
+<input id="dateeffectiveBeginDate" placeholder="DD">
+<input id="yeareffectiveBeginDate" placeholder="YYYY">
+
+<br><br>
+
+<input id="monthverfReceivedDate" placeholder="MM">
+<input id="dateverfReceivedDate" placeholder="DD">
+<input id="yearverfReceivedDate" placeholder="YYYY">
+
+<br><br>
+
+<h2>IDENTITY INFORMATION</h2>
+<select id="identityVerification">
+    <option value="">--Select--</option>
+    <option>Client Statement</option>
+</select>
+
+<br><br>
+
+<div id="validatedByInterfaceText">NO</div>
+
+<br><br>
+
+<h2>RESIDENCY</h2>
+<select id="georgiaResident">
+    <option value="">--Select--</option>
+    <option>YES</option>
+    <option>NO</option>
+</select>
+
+<br><br>
+
+<button onclick="runRuleEngine()">Run Rules</button>
+
+<hr>
+
+<div id="output"></div>
+
+<script>
+window.RULES_JSON = {
+  "ruleSets": {
+    "DCIDA": [
+      {
+        "name": "Mandatory Dates Check",
+        "conditions": {
+          "any": [
+            { "fact": "fields", "path": "$.montheffectiveBeginDate", "operator": "equal", "value": "" },
+            { "fact": "fields", "path": "$.dateeffectiveBeginDate", "operator": "equal", "value": "" },
+            { "fact": "fields", "path": "$.yeareffectiveBeginDate", "operator": "equal", "value": "" }
+          ]
+        },
+        "event": {
+          "type": "MANDATORY_ERROR",
+          "params": {
+            "section": "Person Demographic Dates",
+            "message": "Missing mandatory information in Personal Demographic Dates"
+          }
+        }
+      }
+    ]
+  }
+};
+
+function extractFieldPaths(rules, pageId) {
+    const fieldSet = new Set();
+    (rules.ruleSets[pageId] || []).forEach(rule => {
+        (rule.conditions.any || []).forEach(cond => {
+            if (cond.path) fieldSet.add(cond.path.replace('$.', ''));
+        });
+    });
+    return Array.from(fieldSet);
+}
+
+function getDynamicValue(fieldName) {
+    let el = document.getElementById(fieldName);
+    if (!el) return "";
+    return el.value ? el.value.trim() : el.innerText.trim();
+}
+
+function buildFacts(pageId) {
+    const fieldNames = extractFieldPaths(window.RULES_JSON, pageId);
+    const fields = {};
+    fieldNames.forEach(field => fields[field] = getDynamicValue(field));
+    return { fields };
+}
+
+async function runRuleEngine() {
+    const pageId = document.getElementById("PAGE_ID").value;
+    const output = document.getElementById("output");
+    output.innerHTML = "";
+
+    const engine = new jsonRulesEngine.Engine();
+    window.RULES_JSON.ruleSets[pageId].forEach(rule => engine.addRule(rule));
+
+    const result = await engine.run(buildFacts(pageId));
+
+    if (result.events.length > 0) {
+        result.events.forEach(event => {
+            output.innerHTML += "<p>" + event.params.message + "</p>";
+        });
+    } else {
+        output.innerHTML = "<p>All good</p>";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", runRuleEngine);
+</script>
+
+</body>
+</html>
