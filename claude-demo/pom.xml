@@ -14,7 +14,7 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>claude-demo</artifactId>
+    <artifactId>claude-demo</artifactId> 
     <version>1.0-SNAPSHOT</version>
     <name>claude-demo</name>
     <description>Spring Boot app that connects to Claude using Spring AI</description>
